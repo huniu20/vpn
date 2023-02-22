@@ -3,6 +3,7 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 import torch
 from transformers import BertModel,BertConfig
 from typing import Optional
+from transformers.models.bert.modeling_bert import BertOnlyMLMHead
 
 
 class Vpn(torch.nn.Module):

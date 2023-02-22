@@ -3,31 +3,12 @@ import torch
 import random
 from typing import List
 from transformers import DataCollatorForTokenClassification
-from param import Param
+# from param import Param
 import copy, json,tqdm,multiprocessing
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import Dataset
 from collections import defaultdict
 
-def _load_data(data_file, tag_sep = " ", char_sep = "\n", sentence_sep = "\n\n"):
-    # with open
-    pass
-
-def _shuffle_and_restrict(examples, num_examples: int, seed: int = 42):
-    """
-    Shuffle a list of examples and restrict it to a given maximum size.
-
-    :param examples: the examples to shuffle and restrict
-    :param num_examples: the maximum number of examples
-    :param seed: the random seed for shuffling
-    :return: the first ``num_examples`` elements of the shuffled list
-    """
-    if 0 < num_examples < len(examples):
-        random.Random(seed).shuffle(examples)
-        examples = examples[:num_examples]
-    return examples
-
 class InputExample:
-
     def __init__(self, chars=None, labels=None, tags=None, ids=None) -> None:
         self.chars = chars # List[str]
         self.labels = labels # List[str]
@@ -38,7 +19,7 @@ class InputExample:
     def __repr__(self) -> str:
         return str(self.__dict__) ### str(self.chars) + "\n" + str(self.labels) + "\n" + str(self.tags) + "\n" + str(self.ids)
 
-def load_dataset(data_file, param:Param):
+def load_dataset(data_file, param):
     """加载数据
 
     Args:
@@ -84,14 +65,14 @@ def build_features(examples, param):
 def collate_fn(batch_data, pad=0, cls=101, sep=102):
     batch_input_ids, batch_label_ids, batch_attention_mask = list(zip(*batch_data)) # 解包
     max_len = max([len(seq) for seq in batch_input_ids])
-    batch_input_ids = [[cls] + seq+[pad]*(max_len-len(seq)) [sep]for seq in batch_input_ids]
-    batch_label_ids = [[cls] + seq+[pad]*(max_len-len(seq)) [sep]for seq in batch_label_ids]
-    batch_attention_mask = [[cls] + seq+[0]*(max_len-len(seq)) [sep]for seq in batch_attention_mask]
+    # print(batch_input_ids)
+    batch_input_ids = [[cls] + seq+[pad]*(max_len-len(seq)) + [sep] for seq in batch_input_ids]
+    batch_label_ids = [[-100] + seq+[pad]*(max_len-len(seq)) + [-100] for seq in batch_label_ids]
+    batch_attention_mask = [[0] + seq+[0]*(max_len-len(seq)) [0] for seq in batch_attention_mask]
     batch_input_ids = torch.LongTensor(batch_input_ids)
     batch_label_ids = torch.LongTensor(batch_label_ids)
     batch_attention_mask = torch.FloatTensor(batch_attention_mask)
     return batch_input_ids, batch_label_ids, batch_attention_mask
-
 
 class NERDataset(Dataset):
     def __init__(self, input_ids, attention_masks, label_ids) -> None:
@@ -100,12 +81,13 @@ class NERDataset(Dataset):
         self.label_ids = label_ids
 
     def __getitem__(self, index):
-        return self.input_ids[index], self.label_ids[index], self.attention_masks[index]
+        return (self.input_ids[index], self.attention_masks[index], self.label_ids[index])
 
     def __len__(self):
         return len(self.input_ids)
 
 if __name__ == "__main__":
+    from param import Param
     p = Param()
     print(p.test_file)
     x = load_dataset(p.test_file, p)

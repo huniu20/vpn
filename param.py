@@ -36,6 +36,7 @@ class Param():
     def __init__(self) -> None:
         self.dataset_name = "weibo"
         self.top_k = 5
+        self.batch_size = 8
         
         
     @property
