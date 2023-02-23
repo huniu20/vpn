@@ -15,7 +15,6 @@ class InputExample:
         self.tags = tags # List[int]
         self.ids = ids # List[int]
 
-
     def __repr__(self) -> str:
         return str(self.__dict__) ### str(self.chars) + "\n" + str(self.labels) + "\n" + str(self.tags) + "\n" + str(self.ids)
 
@@ -47,6 +46,19 @@ def load_dataset(data_file, param):
             # print(examples)
     return examples
 
+class NERDataset(Dataset):
+    def __init__(self, input_ids, attention_masks, label_ids) -> None:
+        self.input_ids = input_ids
+        self.attention_masks = attention_masks
+        self.label_ids = label_ids
+
+    def __getitem__(self, index):
+        return (self.input_ids[index], self.attention_masks[index], self.label_ids[index])
+
+    def __len__(self):
+        return len(self.input_ids)
+
+
 def build_features(examples, param):
     feature_map = defaultdict(list)
     # print("???")
@@ -66,25 +78,13 @@ def collate_fn(batch_data, pad=0, cls=101, sep=102):
     batch_input_ids, batch_label_ids, batch_attention_mask = list(zip(*batch_data)) # 解包
     max_len = max([len(seq) for seq in batch_input_ids])
     # print(batch_input_ids)
-    batch_input_ids = [[cls] + seq+[pad]*(max_len-len(seq)) + [sep] for seq in batch_input_ids]
-    batch_label_ids = [[-100] + seq+[pad]*(max_len-len(seq)) + [-100] for seq in batch_label_ids]
-    batch_attention_mask = [[0] + seq+[0]*(max_len-len(seq)) [0] for seq in batch_attention_mask]
+    batch_input_ids = [[cls] + seq + [pad]*(max_len-len(seq)) + [sep] for seq in batch_input_ids]
+    batch_label_ids = [[-100] + seq + [-100]*(max_len-len(seq)) + [-100] for seq in batch_label_ids]
+    batch_attention_mask = [[0] + seq + [0]*(max_len-len(seq)) + [0] for seq in batch_attention_mask]
     batch_input_ids = torch.LongTensor(batch_input_ids)
     batch_label_ids = torch.LongTensor(batch_label_ids)
     batch_attention_mask = torch.FloatTensor(batch_attention_mask)
-    return batch_input_ids, batch_label_ids, batch_attention_mask
-
-class NERDataset(Dataset):
-    def __init__(self, input_ids, attention_masks, label_ids) -> None:
-        self.input_ids = input_ids
-        self.attention_masks = attention_masks
-        self.label_ids = label_ids
-
-    def __getitem__(self, index):
-        return (self.input_ids[index], self.attention_masks[index], self.label_ids[index])
-
-    def __len__(self):
-        return len(self.input_ids)
+    return batch_input_ids, batch_attention_mask, batch_label_ids
 
 if __name__ == "__main__":
     from param import Param
