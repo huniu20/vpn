@@ -6,6 +6,7 @@ from data_process import *
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from model import Vpn
+from torch.nn import CrossEntropyLoss
 
 def main():
     p = Param()
@@ -17,6 +18,7 @@ def main():
     
     model = Vpn(p)
     model.to(device)
+    loss_fn = CrossEntropyLoss()
     for batch_data in tqdm(train_loader):
         input_ids, label_ids, attention_mask = map(lambda x: x.to(device), batch_data)
         output = model(input_ids, label_ids, attention_mask)

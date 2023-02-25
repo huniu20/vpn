@@ -38,7 +38,7 @@ class Param():
         self.dataset_name = "weibo"
         self.top_k = 5
         self.batch_size = 8
-        
+        self.sum_op = "weighted"
         
         
     @property

@@ -27,16 +27,21 @@ class Vpn(torch.nn.Module):
         
         # gather: vocab_size -> num_tags
         emission_scores = [None] * len(self.entity_id_to_word_id)
+        # print(emission_scores)
         for entity_id, id_and_freq in self.entity_id_to_word_id.items():
             # batch_size * sequence_length
             words_id = id_and_freq[0]
             words_freq = torch.FloatTensor(id_and_freq[1])
             if self.param.sum_op == "average":
-                entity_logits = torch.sum(torch.gather(prediction_logits, dim=-1, index=words_id), dim=-1)
+                entity_logits = torch.sum(torch.index_select(prediction_logits, dim=-1, index=torch.LongTensor(words_id)), dim=-1)
             elif self.param.sum_op == "weighted":
-                entity_logits = torch.sum(torch.gather(prediction_logits, dim=-1, index=words_id) * words_freq, dim=-1)
+                entity_logits = torch.sum(torch.index_select(prediction_logits, dim=-1, index=torch.LongTensor(words_id)) * words_freq, dim=-1)
+            else:
+                print(self.param.sum_op)
+                raise ValueError("incorrect sum_op!")
             emission_scores[int(entity_id)] = entity_logits
-        assert None not in emission_scores 
-        
-        output_logits = torch.stack(emission_scores)
-        return output_logits
+        assert None not in emission_scores
+        # print(emission_scores)
+        output_logits = torch.stack(emission_scores, dim=-1)
+        output_logits_crf = self.crf_layer(output_logits)
+        return output_logits_crf

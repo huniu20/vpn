@@ -78,9 +78,9 @@ def collate_fn(batch_data, pad=0, cls=101, sep=102):
     batch_input_ids, batch_label_ids, batch_attention_mask = list(zip(*batch_data)) # 解包
     max_len = max([len(seq) for seq in batch_input_ids])
     # print(batch_input_ids)
-    batch_input_ids = [[cls] + seq + [pad]*(max_len-len(seq)) + [sep] for seq in batch_input_ids]
+    batch_input_ids = [[cls] + seq + [sep] + [pad]*(max_len-len(seq))  for seq in batch_input_ids]
     batch_label_ids = [[-100] + seq + [-100]*(max_len-len(seq)) + [-100] for seq in batch_label_ids]
-    batch_attention_mask = [[0] + seq + [0]*(max_len-len(seq)) + [0] for seq in batch_attention_mask]
+    batch_attention_mask = [[1] + seq + [1] + [0]*(max_len-len(seq))  for seq in batch_attention_mask]
     batch_input_ids = torch.LongTensor(batch_input_ids)
     batch_label_ids = torch.LongTensor(batch_label_ids)
     batch_attention_mask = torch.FloatTensor(batch_attention_mask)
