@@ -3,10 +3,11 @@ import torch
 import random
 from typing import List
 from transformers import DataCollatorForTokenClassification
-# from param import Param
+# sfrom param import Param
 import copy, json,tqdm,multiprocessing
 from torch.utils.data import Dataset
 from collections import defaultdict
+from concurrent.futures import ProcessPoolExecutor
 
 class InputExample:
     def __init__(self, chars=None, labels=None, tags=None, ids=None) -> None:
@@ -62,6 +63,8 @@ class NERDataset(Dataset):
 def build_features(examples, param):
     feature_map = defaultdict(list)
     # print("???")
+    if not isinstance(examples, list):
+        examples = [examples]
     for example in tqdm.tqdm(examples, desc="building examples.... "):
         # print(example)
         if len(example.chars) <= 510:
@@ -88,13 +91,20 @@ def collate_fn(batch_data, pad=0, cls=101, sep=102):
 
 if __name__ == "__main__":
     from param import Param
+    from functools import partial
     p = Param()
+    build_features_new = partial(build_features, param=p)
     print(p.test_file)
     x = load_dataset(p.test_file, p)
+    print(type(x))
     # print(type(x))
     # print(x[:3])
     # print(len(x))
-    feature_map = build_features(x, p)
-    # proc = multiprocessing.Process(target=build_features,args=[x,p])
+    # feature_map = build_features(x, p)
+    # sdf
+    # spool = ProcessPoolExecutor()
+    with ProcessPoolExecutor() as pool:
+        output = list(pool.map(build_features_new,x))
+    # proc = multiprocessing.Process(target=build_features_new,args=[x)
     # feature_map = proc.run()
-    print(feature_map)
+    print(len(output))

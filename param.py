@@ -2,7 +2,7 @@ from transformers import BertModel,BertConfig,BertTokenizer, InputExample, Input
 import torch
 import random
 from typing import List, Dict
-from data_process import *
+
 # import data_process
 import json
 from functools import lru_cache
@@ -82,6 +82,7 @@ class Param():
     @property
     def entity_to_words(self):
         entity_words_dict = {}
+        from data_process import load_dataset
         examples = load_dataset(self.dataset_cls.train_file, self)
         dic = self.get_str_list_label_specificed(examples)
         for key, val in dic.items():
