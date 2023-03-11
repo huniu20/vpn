@@ -39,7 +39,10 @@ class Param():
         self.top_k = 5
         self.batch_size = 8
         self.sum_op = "average"
-        
+        self.train_kernel = 100
+        self.train_epochs = 50
+        self.eval_kernel = 50
+        self.eval_step_intervals = 50
         
     @property
     def entity_ids_to_word_ids(self):
@@ -74,6 +77,10 @@ class Param():
         with open(self.dataset_cls.label_map, "r", encoding="utf-8") as f:
             res = json.load(f)
         return res
+    
+    @property
+    def label_map_reverse(self):
+        return {v:k for k,v in self.label_map.items()}
 
     @property
     def tokenizer(self):
@@ -182,9 +189,10 @@ if __name__ == "__main__":
     p = Param()
     print(p.test_file)
     print(p.label_map)
+    print(p.label_map_reverse)
     # data = load_dataset(path=p.test_file)
-    print(p.entity_id_to_words_id)
-    print(p.tokenizer.get_vocab()["[PAD]"])
+    # print(p.entity_id_to_words_id)
+    # print(p.tokenizer.get_vocab()["[PAD]"])
     # tokenizer = BertTokenizer.from_pretrained("bert-base-chinese")
     # print(len(tokenizer.get_vocab()))
     # print(tokenizer._convert_token_to_id("女"))

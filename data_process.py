@@ -71,13 +71,20 @@ def build_features(examples, param):
             feature_map["input_ids"].append(param.tokenizer.convert_tokens_to_ids(example.chars))
             feature_map["label_ids"].append([param.label_map[e] for e in example.labels])
             feature_map["attention_mask"].append([1 for _ in range(len([param.label_map[e] for e in example.labels]))])
+            seq_length = len(example.chars)
         else:
             feature_map["input_ids"].append(param.tokenizer.convert_tokens_to_ids(example.chars[:510]))
             feature_map["label_ids"].append([param.label_map[e] for e in example.labels[:510]])
             feature_map["attention_mask"].append([1 for _ in range(len([param.label_map[e] for e in example.labels[:510]]))])
+            seq_length = len(example.chars)
     return feature_map["input_ids"][0], feature_map["label_ids"][0], feature_map["attention_mask"][0]
 
 def collate_fn(batch_data, pad=0, cls=101, sep=102):
+    # B-LOC
+    # B-LOC I-LOC
+    # I-LOC
+    # I-LOC I-LOC
+    
     batch_input_ids, batch_label_ids, batch_attention_mask = list(zip(*batch_data))
     max_len = max([len(seq) for seq in batch_input_ids])
     # print(batch_input_ids)

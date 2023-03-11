@@ -46,9 +46,12 @@ class Vpn(torch.nn.Module):
         output_logits = torch.stack(emission_scores, dim=-1)
         # output_logits_crf = self.crf_layer(output_logits)
         if labels is not None:
-            crf_loss = self.crf_layer(output_logits, labels, mask=attention_mask.byte())
+            crf_loss = - self.crf_layer(output_logits, labels, mask=attention_mask.byte())
             return crf_loss
         else:
             # print(type(torch.FloatTensor(output_logits)), "??",type(torch.FloatTensor(attention_mask)))
-            output_logits_crf = self.crf_layer.decode(output_logits.float(), mask=attention_mask.byte())
-            return output_logits_crf
+            output_label_seq_crf = self.crf_layer.decode(output_logits.float(), mask=attention_mask.byte())
+            res = []
+            for seq in output_label_seq_crf:
+                res.append([self.param.label_map_reverse[t] for t in seq][1:-1])
+            return res
