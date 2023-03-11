@@ -65,7 +65,7 @@ def build_features(examples, param):
     # print("???")
     if not isinstance(examples, list):
         examples = [examples]
-    for example in tqdm.tqdm(examples, desc="building examples.... "):
+    for example in examples:
         # print(example)
         if len(example.chars) <= 510:
             feature_map["input_ids"].append(param.tokenizer.convert_tokens_to_ids(example.chars))
@@ -75,19 +75,19 @@ def build_features(examples, param):
             feature_map["input_ids"].append(param.tokenizer.convert_tokens_to_ids(example.chars[:510]))
             feature_map["label_ids"].append([param.label_map[e] for e in example.labels[:510]])
             feature_map["attention_mask"].append([1 for _ in range(len([param.label_map[e] for e in example.labels[:510]]))])
-    return NERDataset(feature_map["input_ids"], feature_map["label_ids"], feature_map["attention_mask"])
+    return feature_map["input_ids"][0], feature_map["label_ids"][0], feature_map["attention_mask"][0]
 
 def collate_fn(batch_data, pad=0, cls=101, sep=102):
-    batch_input_ids, batch_label_ids, batch_attention_mask = list(zip(*batch_data)) # 解包
+    batch_input_ids, batch_label_ids, batch_attention_mask = list(zip(*batch_data))
     max_len = max([len(seq) for seq in batch_input_ids])
     # print(batch_input_ids)
     batch_input_ids = [[cls] + seq + [sep] + [pad]*(max_len-len(seq))  for seq in batch_input_ids]
-    batch_label_ids = [[-100] + seq + [-100]*(max_len-len(seq)) + [-100] for seq in batch_label_ids]
+    batch_label_ids = [[0] + seq + [0]*(max_len-len(seq)) + [0] for seq in batch_label_ids]
     batch_attention_mask = [[1] + seq + [1] + [0]*(max_len-len(seq))  for seq in batch_attention_mask]
     batch_input_ids = torch.LongTensor(batch_input_ids)
     batch_label_ids = torch.LongTensor(batch_label_ids)
     batch_attention_mask = torch.FloatTensor(batch_attention_mask)
-    return batch_input_ids, batch_attention_mask, batch_label_ids
+    return batch_input_ids, batch_label_ids, batch_attention_mask
 
 if __name__ == "__main__":
     from param import Param
@@ -103,8 +103,14 @@ if __name__ == "__main__":
     # feature_map = build_features(x, p)
     # sdf
     # spool = ProcessPoolExecutor()
-    with ProcessPoolExecutor() as pool:
+    with ProcessPoolExecutor(100) as pool:
         output = list(pool.map(build_features_new,x))
     # proc = multiprocessing.Process(target=build_features_new,args=[x)
     # feature_map = proc.run()
     print(len(output))
+    input, label, atten = list(zip(*output))
+    # print(output[1], type(output[1]))
+    train_data = NERDataset(input, atten,label)
+    print(train_data[1])
+    print(type(train_data), type(train_data[1]))
+    print(len(train_data))

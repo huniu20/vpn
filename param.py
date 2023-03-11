@@ -38,7 +38,7 @@ class Param():
         self.dataset_name = "weibo"
         self.top_k = 5
         self.batch_size = 8
-        self.sum_op = "weighted"
+        self.sum_op = "average"
         
         
     @property
@@ -137,7 +137,7 @@ class Param():
             res[entity_id] = (word_ids, word_freq)
         return res
         # print(entity_to_words)
-    
+
     def compute_freq(self, chars, K=None):
         word_freq = {}
         for word in chars:
