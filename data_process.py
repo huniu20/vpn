@@ -26,24 +26,64 @@ def load_dataset(data_file, param):
         param (Param): _description_
     """
     examples = []
-    with open(data_file, "r", encoding="utf-8") as f:
-        data = f.read().strip()
-        sentences = data.split(param.dataset_cls.sentence_sep)
-        for sentence in sentences:
-            chars = sentence.split(param.dataset_cls.char_sep)
-            c = []
-            l = []
-            for char in chars:
-                if char == None:
-                    continue
-                char = char.split(param.dataset_cls.tag_sep)
-                c.append(char[0])
-                if "." in char[1]:
-                    cur_l = char[1].split(".")[0]
-                    l.append(cur_l)
-                else:
-                    l.append(char[1])
-            examples.append(InputExample(chars=c, labels=l))
+    if param.dataset_name == "msra":
+        import json
+        with open(data_file, "r", encoding="utf-8") as f:
+            lines = [json.loads(l) for l in f.read().splitlines()]
+        for line in lines:
+            chars = list(line["text"])
+            labels = ["O" for _ in range(len(chars))]
+            if line["entity_list"] is not None:
+                for entity in line["entity_list"]:
+                    labels[entity["entity_index"]["begin"]] = "B-" + entity["entity_type"]
+                    for i in range(entity["entity_index"]["begin"] + 1, entity["entity_index"]["end"]):
+                        labels[i] = "I-" + entity["entity_type"]
+            # print(chars, labels)
+            # print(param.tokenizer.convert_tokens_to_ids(chars))
+            # sdfa
+            examples.append(InputExample(chars=chars, labels=labels))
+    elif param.dataset_name == "ontonote4":
+        with open(data_file, "r", encoding="utf-8") as f:
+            data = f.read().strip()
+            sentences = data.split(param.dataset_cls.sentence_sep)
+            for sentence in sentences:
+                chars = sentence.split(param.dataset_cls.char_sep)
+                c = []
+                l = []
+                for char in chars:
+                    if char == None:
+                        continue
+                    char = char.split(param.dataset_cls.tag_sep)
+                    c.append(char[0])
+                    if "M-" in char[1] or "E-" in char[1]:
+                        cur_l = "I-" + char[1].split("-")[1]
+                        l.append(cur_l)
+                    elif "S-" in char[1]:
+                        cur_l = "B-" + char[1].split("-")[1]
+                        l.append(cur_l)
+                    else:
+                        l.append(char[1])
+
+                examples.append(InputExample(chars=c, labels=l))
+    else:
+        with open(data_file, "r", encoding="utf-8") as f:
+            data = f.read().strip()
+            sentences = data.split(param.dataset_cls.sentence_sep)
+            for sentence in sentences:
+                chars = sentence.split(param.dataset_cls.char_sep)
+                c = []
+                l = []
+                for char in chars:
+                    if char == None:
+                        continue
+                    char = char.split(param.dataset_cls.tag_sep)
+                    c.append(char[0])
+                    if "." in char[1]:
+                        cur_l = char[1].split(".")[0]
+                        l.append(cur_l)
+                    else:
+                        l.append(char[1])
+                examples.append(InputExample(chars=c, labels=l))
             # print(examples)
     return examples
 
@@ -60,26 +100,52 @@ class NERDataset(Dataset):
         return len(self.input_ids)
 
 
+def tokenize_one_example(example,param):
+    chars = example.chars
+    labels = example.labels
+    tokenizer = BertTokenizer.from_pretrained(param.dataset_cls.backbone)
+    chars_tokenized = [tokenizer.tokenize(t) for t in chars]
+    input_ids = []
+    label_ids = []
+    input_ids.append(tokenizer.vocab["[CLS]"])
+    label_ids.append(param.label_map["O"])
+    for idx,char_tokenized in enumerate(chars_tokenized):
+        label = labels[idx]
+        input_ids.extend([tokenizer.vocab[t] for t in char_tokenized])
+        if label.startswith("O"):
+            label_ids.extend([param.label_map[label]] * len(char_tokenized))
+        elif label.startswith("I-"):
+            label_ids.extend([param.label_map[label]] * len(char_tokenized))
+        else:
+            label_ids.append(param.label_map[label])
+            label_ids.extend([param.label_map["I-" + label[2:]]] * (len(char_tokenized) - 1))
+    assert len(input_ids) == len(label_ids)
+    if len(input_ids) > (param.max_len - 1):
+        input_ids, label_ids = input_ids[:510], label_ids[:510]
+    input_ids.append(tokenizer.vocab["[SEP]"])
+    label_ids.append(param.label_map["O"])
+    attention_mask = [1] * len(label_ids)
+    return input_ids, label_ids, attention_mask
+    
 def build_features(examples, param):
-    feature_map = defaultdict(list)
-    # print("???")
     if not isinstance(examples, list):
         examples = [examples]
     for example in examples:
-        # print(example)
-        if len(example.chars) <= 510:
-            feature_map["input_ids"].append(param.tokenizer.convert_tokens_to_ids(example.chars))
-            feature_map["label_ids"].append([param.label_map[e] for e in example.labels])
-            feature_map["attention_mask"].append([1 for _ in range(len([param.label_map[e] for e in example.labels]))])
-            seq_length = len(example.chars)
-        else:
-            feature_map["input_ids"].append(param.tokenizer.convert_tokens_to_ids(example.chars[:510]))
-            feature_map["label_ids"].append([param.label_map[e] for e in example.labels[:510]])
-            feature_map["attention_mask"].append([1 for _ in range(len([param.label_map[e] for e in example.labels[:510]]))])
-            seq_length = len(example.chars)
-    return feature_map["input_ids"][0], feature_map["label_ids"][0], feature_map["attention_mask"][0]
+        input_ids, label_ids, attention_mask = tokenize_one_example(example, param)
+        # else:
+        #     ids = []
+        #     for char in example.chars:
+        #         try:
+        #             ids.append(param.vocab[char])
+        #         except:
+        #             ids.append(100)
+        #     feature_map["input_ids"].append(ids)
+        #     feature_map["label_ids"].append([param.label_map[e] for e in example.labels[:510]])
+        #     feature_map["attention_mask"].append([1 for _ in range(len([param.label_map[e] for e in example.labels[:510]]))])
 
-def collate_fn(batch_data, pad=0, cls=101, sep=102):
+    return input_ids, label_ids, attention_mask
+
+def collate_fn(batch_data, pad=0, label_pad=0):
     # B-LOC
     # B-LOC I-LOC
     # I-LOC
@@ -88,9 +154,9 @@ def collate_fn(batch_data, pad=0, cls=101, sep=102):
     batch_input_ids, batch_label_ids, batch_attention_mask = list(zip(*batch_data))
     max_len = max([len(seq) for seq in batch_input_ids])
     # print(batch_input_ids)
-    batch_input_ids = [[cls] + seq + [sep] + [pad]*(max_len-len(seq))  for seq in batch_input_ids]
-    batch_label_ids = [[0] + seq + [0]*(max_len-len(seq)) + [0] for seq in batch_label_ids]
-    batch_attention_mask = [[1] + seq + [1] + [0]*(max_len-len(seq))  for seq in batch_attention_mask]
+    batch_input_ids = [seq + [pad]*(max_len-len(seq))  for seq in batch_input_ids]
+    batch_label_ids = [seq + [label_pad]*(max_len-len(seq)) for seq in batch_label_ids]
+    batch_attention_mask = [seq + [0]*(max_len-len(seq))  for seq in batch_attention_mask]
     batch_input_ids = torch.LongTensor(batch_input_ids)
     batch_label_ids = torch.LongTensor(batch_label_ids)
     batch_attention_mask = torch.FloatTensor(batch_attention_mask)
