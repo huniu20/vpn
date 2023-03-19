@@ -69,7 +69,7 @@ class Param():
 
         self.eval_kernel = 50
         self.eval_batch_size = 16
-        
+        self.use_crf = False
         self.max_len = 512
         print(self.dataset_cls.__dict__)
 
@@ -89,6 +89,12 @@ class Param():
     def dataset_cls(self):
         return globals()[self.dataset_name.upper() + "Dataset"]
 
+    @property
+    def label_padding(self):
+        if self.use_crf:
+            return self.label_map["O"]
+        else:
+            return -100
     @property
     def train_epochs(self):
         return self.dataset_cls.train_epochs

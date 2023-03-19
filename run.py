@@ -29,7 +29,7 @@ def main():
     input_ids, label_ids, attention_mask = list(zip(*train_data))
     train_data = NERDataset(input_ids, label_ids, attention_mask)
     train_loader = DataLoader(dataset=train_data,batch_size=p.batch_size,
-                              shuffle=True,collate_fn=partial(collate_fn,label_pad=p.label_map["O"]))
+                              shuffle=True,collate_fn=partial(collate_fn,label_pad=p.label_padding))
     
     ### 声明模型
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -53,7 +53,7 @@ def main():
     # print(model.optimizer.state_dict()['param_groups'][0]['lr'])
 
     # 训练前先评测一下
-    evaluate(param=p, model=model)
+    # evaluate(param=p, model=model)
     
     eval_res = {}
     total_step = p.train_epochs * len(train_loader)
@@ -81,12 +81,12 @@ def main():
                     biggest_f1 = cur_eval_res["f1"]
                     if ckpt_path is not None:
                         os.remove(ckpt_path)
-                    ckpt_path = f"./ckpts/{p.dataset_name}/top_k_{p.top_k}_{p.sum_op}_time{time_tuple[1]}_{time_tuple[2]}_{time_tuple[3]}_f1_{biggest_f1}.pkl"
+                    ckpt_path = f"./ckpts/{p.dataset_name}/top_k_{p.top_k}_{p.sum_op}_crf_{p.use_crf}_time{time_tuple[1]}_{time_tuple[2]}_{time_tuple[3]}_f1_{biggest_f1}.pkl"
                     torch.save(model.state_dict(), ckpt_path)
                 eval_res[f"epoch{i}_step{step}_time{time_tuple[1]}_{time_tuple[2]}_{time_tuple[3]}"] = evaluate(p, model)
             cur_step = time.time() - cur_epoch_time
             remain_time = cur_step * (total_step - 1 - step)
-        print("第{}个epoch训练结束,当前epoch最大的F1值为: {}, 剩余训练时间约为{}时{}分".format(i,biggest_f1,(remain_time / 3600), (remain_time % 3600) / 60))
+        print("第{}个epoch训练结束,当前epoch最大的F1值为: {}, 剩余训练时间约为{:.2f}时{:.2f}分".format(i,biggest_f1,(remain_time / 3600), (remain_time % 3600) / 60))
     print(eval_res)
     print("biggest_f1:",biggest_f1)
 
@@ -111,7 +111,8 @@ def evaluate(param, model):
     for batch_data in train_loader:
         input_ids, label_ids, attention_mask = map(lambda x: x.to(device), batch_data)
         # print(batch_data)
-        cur_step_y_pred = model(input_ids, attention_mask=attention_mask)
+        cur_step_y_pred = model(input_ids, attention_mask=attention_mask).to("cpu").tolist()
+        # print(cur_step_y_pred,cur_)
         length = [len(cur) for cur in cur_step_y_pred]
         for i, y in enumerate(label_ids.tolist()):
             y_true.append([param.label_map_reverse[t] for t in y[:length[i]]])
@@ -150,14 +151,14 @@ if __name__ == "__main__":
     # # print(p.label_map_reverse)
     # # print(p.label_map)
     # model = Vpn(p)
-    # # model.load_state_dict(torch.load('/home/liuhq/hun/my_work/prompt_ner_torch/ckpts/weibo/time3_12_2_f1_0.7000000000000001.pkl'))
+    # model.load_state_dict(torch.load('/home/liuhq/hun/my_work/prompt_ner_torch/ckpts/weibo/time3_12_2_f1_0.7000000000000001.pkl'))
+    # print(evaluate(p, model))
     # # for name, para in model.named_parameters():
     # #     if "crf" in name:
     # #         print("crf:", name, para)
     # #     else:
     # #         pass
     #         # other_group["params"].append(para)
-    # print(evaluate(p, model))
     # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     # x = load_dataset(p.test_file, p)
     # train_data = build_features(x, p)

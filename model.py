@@ -5,6 +5,8 @@ from transformers import BertModel,BertConfig
 from typing import Optional
 from transformers.models.bert.modeling_bert import BertOnlyMLMHead,BertForPreTraining
 from torchcrf import CRF
+from torch.nn import CrossEntropyLoss
+
 
 class Vpn(torch.nn.Module):
     def __init__(self, param) -> None:
@@ -14,6 +16,7 @@ class Vpn(torch.nn.Module):
         self.bert_for_pretraining = BertForPreTraining.from_pretrained(param.dataset_cls.backbone)
         self.crf_layer = CRF(param.num_tags, batch_first=True)
         self.entity_id_to_words_id = self.param.entity_id_to_word_id
+        self.loss_fn = CrossEntropyLoss()
         print(self.entity_id_to_words_id)
         
     def forward(self,
@@ -50,9 +53,15 @@ class Vpn(torch.nn.Module):
                 crf_loss = - self.crf_layer(output_logits, labels, mask=attention_mask.byte())
                 return crf_loss
             else:
-                # loss = torch.nn.CrossEntropyLoss
-                pass
+                # print("shape:",output_logits[1,:,:],labels[1,:])
+                # print("shape:",output_logits.reshape((-1,self.param.num_tags)).shape,labels.reshape((-1,)).shape)
+                loss = self.loss_fn(output_logits.reshape((-1,self.param.num_tags)), labels.reshape((-1,)))
+                return loss
         else:
             # print(type(torch.FloatTensor(output_logits)), "??",type(torch.FloatTensor(attention_mask)))
-            output_label_seq_crf = self.crf_layer.decode(output_logits.float(), mask=attention_mask.byte())
-            return output_label_seq_crf
+            if self.param.use_crf == True:
+                output_label_seq_crf = self.crf_layer.decode(output_logits.float(), mask=attention_mask.byte())
+                return output_label_seq_crf
+            else:
+                output_label = torch.argmax(output_logits,dim=-1)
+                return output_label
