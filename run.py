@@ -83,6 +83,7 @@ def main():
                         os.remove(ckpt_path)
                     ckpt_path = f"./ckpts/{p.dataset_name}/top_k_{p.top_k}_{p.sum_op}_crf_{p.use_crf}_time{time_tuple[1]}_{time_tuple[2]}_{time_tuple[3]}_f1_{biggest_f1}.pkl"
                     torch.save(model.state_dict(), ckpt_path)
+                    print(f"模型保存到:./ckpts/{p.dataset_name}/top_k_{p.top_k}_{p.sum_op}_crf_{p.use_crf}_time{time_tuple[1]}_{time_tuple[2]}_{time_tuple[3]}_f1_{biggest_f1}.pkl")
                 eval_res[f"epoch{i}_step{step}_time{time_tuple[1]}_{time_tuple[2]}_{time_tuple[3]}"] = evaluate(p, model)
             cur_step = time.time() - cur_epoch_time
             remain_time = cur_step * (total_step - 1 - step)
@@ -111,8 +112,10 @@ def evaluate(param, model):
     for batch_data in train_loader:
         input_ids, label_ids, attention_mask = map(lambda x: x.to(device), batch_data)
         # print(batch_data)
-        cur_step_y_pred = model(input_ids, attention_mask=attention_mask).to("cpu").tolist()
+        cur_step_y_pred = model(input_ids, attention_mask=attention_mask)
         # print(cur_step_y_pred,cur_)
+        if not param.use_crf:
+            cur_step_y_pred = cur_step_y_pred.to("cpu").tolist()
         length = [len(cur) for cur in cur_step_y_pred]
         for i, y in enumerate(label_ids.tolist()):
             y_true.append([param.label_map_reverse[t] for t in y[:length[i]]])
@@ -146,7 +149,8 @@ if __name__ == "__main__":
     print("PID:", os.getpid())
     main()
     print("结束时间", time.localtime())
-    
+    # import matplotlib.pyplot as plt
+    # plt.plot()
     # p = Param()
     # # print(p.label_map_reverse)
     # # print(p.label_map)

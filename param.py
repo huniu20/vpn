@@ -59,17 +59,17 @@ class MSRADataset:
 
 class Param():
     def __init__(self) -> None:
+        self.use_crf = True
         self.dataset_name = "weibo"
         self.top_k = 5
         # self.batch_size = 16
         self.sum_op = "weighted"
         self.train_kernel = 100
-        self.lr = 1e-5
+        self.lr = 5e-5
         self.crf_lr = 1e-3
 
         self.eval_kernel = 50
         self.eval_batch_size = 16
-        self.use_crf = False
         self.max_len = 512
         print(self.dataset_cls.__dict__)
 

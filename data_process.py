@@ -67,6 +67,7 @@ def load_dataset(data_file, param):
                 examples.append(InputExample(chars=c, labels=l))
     else:
         with open(data_file, "r", encoding="utf-8") as f:
+            # entitys = 0
             data = f.read().strip()
             sentences = data.split(param.dataset_cls.sentence_sep)
             for sentence in sentences:
@@ -78,6 +79,8 @@ def load_dataset(data_file, param):
                         continue
                     char = char.split(param.dataset_cls.tag_sep)
                     c.append(char[0])
+                    # if "B-" in char[1]:
+                    # entitys +=1 
                     if "." in char[1]:
                         cur_l = char[1].split(".")[0]
                         l.append(cur_l)
@@ -85,6 +88,8 @@ def load_dataset(data_file, param):
                         l.append(char[1])
                 examples.append(InputExample(chars=c, labels=l))
             # print(examples)
+        # print("句子数",len(examples),"实体数：",entitys)
+        # sdaf
     return examples
 
 class NERDataset(Dataset):
